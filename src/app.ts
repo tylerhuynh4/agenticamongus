@@ -1,40 +1,39 @@
+import { renderDashboard } from "./ui/Dashboard";
+import { mockState } from "./state/mockData";
+import type { GameState } from "./state/GameState";
+
 export class App {
+  private state: GameState = structuredClone(mockState);
+
   constructor(private root: HTMLElement) {
     this.render();
   }
 
   render() {
-    this.root.innerHTML = `
-      <div style="font-family: Arial; padding: 20px;">
-        
-        <h1>🧠 AI Among Us Dashboard</h1>
-        <p>Status: <b style="color:green">System Online</b></p>
+    this.root.innerHTML = renderDashboard(this.state);
+    this.attachEvents();
+  }
 
-        <hr />
+  attachEvents() {
+    document.getElementById("step")?.addEventListener("click", () => {
+      this.state.round++;
+      this.state.events.push(`Step executed. Round is now ${this.state.round}`);
+      this.render();
+    });
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          
-          <div>
-            <h2>Players</h2>
-            <div>Agent 1 - Alive</div>
-            <div>Agent 2 - Alive</div>
-            <div>Agent 3 - Dead</div>
-          </div>
+    document.getElementById("reset")?.addEventListener("click", () => {
+      this.state = structuredClone(mockState);
+      this.render();
+    });
 
-          <div>
-            <h2>Event Log</h2>
-            <div>Agent 2 moved</div>
-            <div>Meeting started</div>
-          </div>
+    document.getElementById("start")?.addEventListener("click", () => {
+      this.state.events.push("Simulation started");
+      this.render();
+    });
 
-        </div>
-
-        <hr />
-
-        <button>Start Simulation</button>
-        <button>Next Step</button>
-
-      </div>
-    `;
+    document.getElementById("pause")?.addEventListener("click", () => {
+      this.state.events.push("Simulation paused");
+      this.render();
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { Player } from "../state/GameState";
+import type { Player } from "../state/GameState";
 
 export function renderPlayerList(players: Player[]) {
   return `
@@ -7,13 +7,13 @@ export function renderPlayerList(players: Player[]) {
       ${players
         .map(
           (p) => `
-        <div class="player">
-          <strong>${p.name}</strong>
-          <span>${p.alive ? "🟢 Alive" : "🔴 Dead"}</span>
-          <span>${p.location}</span>
-          <span>Sus: ${p.suspicion.toFixed(2)}</span>
-        </div>
-      `
+            <div class="player">
+              <strong>${p.name}</strong>
+              <span>${p.alive ? "🟢 Alive" : "🔴 Dead"}</span>
+              <span>${p.location}</span>
+              <span>Sus: ${p.suspicion.toFixed(2)}</span>
+            </div>
+          `
         )
         .join("")}
     </div>

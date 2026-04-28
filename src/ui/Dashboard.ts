@@ -1,4 +1,4 @@
-import { GameState } from "../state/GameState";
+import type { GameState } from "../state/GameState";
 import { renderPlayerList } from "./PlayerList";
 import { renderEventLog } from "./EventLog";
 import { renderControls } from "./Controls";
