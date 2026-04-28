@@ -1,3 +1,5 @@
+import "./styles/main_old.css";
+
 console.log("MAIN EXECUTING FROM:", import.meta.url);
 
 import { App } from "./app";
