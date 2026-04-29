@@ -21,14 +21,14 @@ This repository now includes a starter AI/Agent implementation in TypeScript.
 ### Prerequisites
 1. Install Node.js 20+.
 2. Install llama.cpp and build/download a llama executable (recommended on Windows: `llama-completion.exe`).
-3. Download a GGUF model (for example, a quantized 7B instruct model).
+3. Download the Qwen2.5-3B-Instruct GGUF model (recommended: `Q4_K_M` quantization).
 
 ### GGUF Model Download
 This is the model I'm using if you need to download it:
 
-1. Open: `https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
-2. Download: `tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf`
-3. Save it somewhere local, for example: `C:/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf`
+1. Open: `https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF`
+2. Download: `Qwen2.5-3B-Instruct-Q4_K_M.gguf`
+3. Save it somewhere local, for example: `C:/Users/Awsom/Programs/CPSC 481/llama.cpp/models/qwen2.5-3b-instruct-q4_k_m.gguf`
 4. Set `LLAMA_MODEL_PATH` in your local `.env` to that file path.
 
 Notes:
