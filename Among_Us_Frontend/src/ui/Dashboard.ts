@@ -46,11 +46,6 @@ export function renderDashboard(state: GameState) {
 }
 
 function getWinnerText(events: string[]) {
-  const winEvent = events.find((e) => e.includes("won the game"));
-
-  if (!winEvent) {
-    return "Winner decided";
-  }
-
-  return winEvent;
+  const winEvent = events.findLast((e) => e.includes("win") || e.includes("Game over"));
+  return winEvent ?? "Game over";
 }

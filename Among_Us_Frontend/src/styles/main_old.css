@@ -37,18 +37,21 @@ body {
 .grid {
   display: flex;
   gap: 20px;
+  align-items: stretch;
 }
 
-/* Players panel bigger */
+/* Players panel */
 .grid > .panel:first-child {
-  flex: 2;   /* 🔥 wider */
+  flex: 2;
   min-width: 300px;
 }
 
-/* Event log smaller */
+/* Event log panel — flex column so .log can grow */
 .grid > .panel:last-child {
-  flex: 1;
-  min-width: 200px;
+  flex: 2;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel {
@@ -89,6 +92,19 @@ body {
 
 .player-row .name {
   font-weight: bold;
+}
+
+.impostor-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 3px;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
 }
 
 .player-row .room {
@@ -163,8 +179,19 @@ body {
 /* ===== Event Log ===== */
 
 .log {
-  max-height: 200px;
+  flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.log div {
+  padding: 3px 0;
+  border-bottom: 1px solid #1e1e1e;
+  color: #d1d5db;
 }
 
 /* ===== Buttons ===== */

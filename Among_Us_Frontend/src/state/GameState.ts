@@ -2,6 +2,7 @@ export interface Player {
   id: number;
   name: string;
   alive: boolean;
+  role: "crew" | "imp";
   location: string;
   suspicion: number;
   lastAction?: string;

@@ -16,7 +16,10 @@ export function renderPlayerList(players: Player[]) {
         .map(
           (p) => `
             <div class="player-row">
-              <span class="name">${p.name}</span>
+              <span class="name">
+                ${p.name}
+                ${p.role === "imp" ? `<span class="impostor-tag">IMPOSTOR</span>` : ""}
+              </span>
               <span>${p.alive ? "🟢 Alive" : "🔴 Dead"}</span>
               <span class="room">${p.location}</span>
               <span class="last-action">${p.lastAction ?? "Waiting"}</span>

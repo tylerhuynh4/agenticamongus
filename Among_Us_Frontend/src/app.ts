@@ -4,12 +4,14 @@ import type { GameState } from "./state/GameState";
 import { SocketClient } from "./network/socket";
 
 export class App {
+  private root: HTMLElement;
   private state: GameState = structuredClone(mockState);
   private socket = new SocketClient();
   private speedMs = 2000;
   private lastRenderTime = 0;
 
-  constructor(private root: HTMLElement) {
+  constructor(root: HTMLElement) {
+    this.root = root;
     this.render();
 
     this.socket.connect((message) => {
@@ -27,7 +29,7 @@ export class App {
 
       if (message.type === "GAME_OVER") {
         this.state.phase = "END";
-        this.state.events.push(`Game over: ${message.winner}`);
+        this.state.events.push(formatGameOver(message.winner, message.reason));
         this.render();
       }
     });
@@ -93,6 +95,7 @@ function convertBackendState(serverState: any): GameState {
       id: index + 1,
       name: agent.name,
       alive: agent.alive,
+      role: agent.role ?? "crew",
       location: agent.room,
       suspicion: 0,
       lastAction: getLastAction(serverState, agent.id),
@@ -112,6 +115,9 @@ function convertBackendState(serverState: any): GameState {
         case "REPORT":
           return `${getName(serverState, event.reporterId)} reported a body`;
 
+        case "SPEAK":
+          return `${getName(serverState, event.agentId)}: "${event.text}"`;
+
         case "MEETING":
           return `Meeting called by ${getName(serverState, event.callerId)}`;
 
@@ -122,7 +128,7 @@ function convertBackendState(serverState: any): GameState {
           return `${getName(serverState, event.agentId)} was ejected`;
 
         case "WIN":
-          return `${event.winner === "crew" ? "Crew" : "Impostors"} won the game`;
+          return formatGameOver(event.winner, event.reason);
 
         case "PHASE":
           return `Phase changed to ${event.phase}`;
@@ -182,4 +188,17 @@ function convertPhase(phase: string): GameState["phase"] {
 
 function getName(state: any, id: string) {
   return state.agents?.[id]?.name ?? id;
+}
+
+function formatGameOver(winner: string, reason: string): string {
+  if (winner === "crew") {
+    if (reason === "imp_eject") return "Crewmates win — all impostors voted out!";
+    if (reason === "tasks_done") return "Crewmates win — all tasks completed!";
+    return "Crewmates win!";
+  }
+  if (winner === "imp") {
+    if (reason === "crew_outnum") return "Impostors win — crewmates outnumbered!";
+    return "Impostors win!";
+  }
+  return "Game over";
 }
