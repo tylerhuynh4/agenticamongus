@@ -4,6 +4,7 @@ export interface Player {
   alive: boolean;
   location: string;
   suspicion: number;
+  lastAction?: string;
 }
 
 export interface GameState {

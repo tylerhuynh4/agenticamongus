@@ -21,7 +21,7 @@ body {
 }
 
 .left-panel {
-  width: 500px;
+  width: 700px;          /* gives more total space to players/log */
   flex-shrink: 0;
 }
 
@@ -32,7 +32,24 @@ body {
   align-items: flex-start;
 }
 
-/* ===== Panels ===== */
+/* ===== Grid Layout ===== */
+
+.grid {
+  display: flex;
+  gap: 20px;
+}
+
+/* Players panel bigger */
+.grid > .panel:first-child {
+  flex: 2;   /* 🔥 wider */
+  min-width: 300px;
+}
+
+/* Event log smaller */
+.grid > .panel:last-child {
+  flex: 1;
+  min-width: 200px;
+}
 
 .panel {
   background: #161616;
@@ -47,13 +64,100 @@ body {
   gap: 20px;
 }
 
+/* ===== Player Table Layout ===== */
+
+.player-header,
+.player-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1.8fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-header {
+  font-weight: bold;
+  color: #aaa;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 6px;
+}
+
+.player-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.player-row .name {
+  font-weight: bold;
+}
+
+.player-row .room {
+  color: #bbb;
+}
+
+.last-action {
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+/* ===== Game Over Banner ===== */
+
+.game-over {
+  background: #dc2626;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 10px;
+  text-align: center;
+  border: 2px solid #fca5a5;
+}
+
+.winner-text {
+  font-size: 16px;
+  margin-top: 6px;
+  color: #ffe4e6;
+}
+
 /* ===== Player List ===== */
 
 .player {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.player strong {
+  font-size: 14px;
+}
+
+/* ===== Suspicion ===== */
+
+.sus-block {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sus-bar {
+  width: 70px;
+  height: 8px;
+  background: #333;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sus-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.sus-percent {
+  font-size: 12px;
+  color: #bbb;
 }
 
 /* ===== Event Log ===== */
@@ -79,6 +183,22 @@ button:hover {
   background: #444;
 }
 
+/* ===== Speed Slider ===== */
+
+.speed-control {
+  margin-top: 12px;
+}
+
+.speed-control label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
 /* ===== Map ===== */
 
 .map-panel {
@@ -86,9 +206,8 @@ button:hover {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid #2a2a2a;
-
   width: 100%;
-  max-width: 650px; /* adjust size here */
+  max-width: 650px;
 }
 
 .map-container {
@@ -106,8 +225,43 @@ button:hover {
   object-fit: contain;
 }
 
-/* ===== Player Dots (hidden for now) ===== */
+/* ===== Player Dots ===== */
 
 .player-dot {
-  display: none;
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 13px;
+  color: white;
+  border: 2px solid white;
+  z-index: 5;
+
+  animation: dot-pop 0.25s ease;
+}
+
+.player-dot.alive {
+  background: #22c55e;
+}
+
+.player-dot.dead {
+  background: #ef4444;
+}
+
+/* ===== Dot Animation ===== */
+
+@keyframes dot-pop {
+  from {
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0.6;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
 }

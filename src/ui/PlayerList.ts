@@ -4,14 +4,22 @@ export function renderPlayerList(players: Player[]) {
   return `
     <div class="panel">
       <h2>Players</h2>
+
+      <div class="player-header">
+        <span>Name</span>
+        <span>Status</span>
+        <span>Room</span>
+        <span>Last Action</span>
+      </div>
+
       ${players
         .map(
           (p) => `
-            <div class="player">
-              <strong>${p.name}</strong>
+            <div class="player-row">
+              <span class="name">${p.name}</span>
               <span>${p.alive ? "🟢 Alive" : "🔴 Dead"}</span>
-              <span>${p.location}</span>
-              <span>Sus: ${p.suspicion.toFixed(2)}</span>
+              <span class="room">${p.location}</span>
+              <span class="last-action">${p.lastAction ?? "Waiting"}</span>
             </div>
           `
         )
