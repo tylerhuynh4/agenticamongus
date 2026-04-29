@@ -12,10 +12,15 @@ function parseNumber(value: string | undefined, fallback: number): number {
 }
 
 export const config = {
-  llamaCppBin: process.env.LLAMA_CPP_BIN ?? "",
-  modelPath: process.env.LLAMA_MODEL_PATH ?? "",
-  contextSize: parseNumber(process.env.LLAMA_CONTEXT_SIZE, 2048),
-  temperature: parseNumber(process.env.LLAMA_TEMPERATURE, 0.2),
-  maxTokens: parseNumber(process.env.LLAMA_MAX_TOKENS, 16),
-  timeoutMs: parseNumber(process.env.LLAMA_TIMEOUT_MS, 120000),
+  openRouterApiKey: process.env.OPENROUTER_API_KEY ?? "",
+  openRouterModel:
+    process.env.OPENROUTER_MODEL ?? "meta-llama/llama-3.1-8b-instruct",
+  openRouterBaseUrl:
+    process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+  openRouterAppName:
+    process.env.OPENROUTER_APP_NAME ?? "agenticamongus-backend",
+  openRouterAppUrl: process.env.OPENROUTER_APP_URL ?? "",
+  temperature: parseNumber(process.env.OPENROUTER_TEMPERATURE, 0.7),
+  maxTokens: parseNumber(process.env.OPENROUTER_MAX_TOKENS, 300),
+  timeoutMs: parseNumber(process.env.OPENROUTER_TIMEOUT_MS, 8000),
 };

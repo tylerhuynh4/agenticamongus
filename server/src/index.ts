@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import FastifyWebSocket from '@fastify/websocket';
 import { GameEngine } from './game/engine.js';
-import { runAgent, runDiscussionAgent, runVoteAgent } from './agents/runner';
+import { runAgent, runDiscussionAgent, runVoteAgent } from './agents/runner.js';
 import type { ServerMsg, ClientMsg, Thought } from '../../shared/types';
 import 'dotenv/config';
 
@@ -19,6 +19,7 @@ class GameOrchestrator {
     private clients: Set<any> = new Set();
     private tickInterval: ReturnType<typeof setInterval> | null = null;
     private paused = false;
+    private ticking = false;
     private tickMs: number;
 
     constructor() {
@@ -28,7 +29,7 @@ class GameOrchestrator {
 
     addClient(ws: any) {
         this.clients.add(ws);
-        this.broadcast({ type: 'STATE_SYNC', state: this.engine.state });
+        this.broadcast({ type: 'STATE_SYNC', state: this.engine.toClientState(true) });
     }
 
     removeClient(ws: any) {
@@ -67,14 +68,14 @@ class GameOrchestrator {
     private startGame(config?: any) {
         this.engine = new GameEngine(config);
         this.engine.startGame();
-        this.broadcast({ type: 'STATE_SYNC', state: this.engine.state });
+        this.broadcast({ type: 'STATE_SYNC', state: this.engine.toClientState(true) });
         this.startLoop();
     }
 
     private reset() {
         this.stopLoop();
         this.engine = new GameEngine();
-        this.broadcast({ type: 'STATE_SYNC', state: this.engine.state });
+        this.broadcast({ type: 'STATE_SYNC', state: this.engine.toClientState(true) });
     }
 
     private startLoop() {
@@ -89,7 +90,9 @@ class GameOrchestrator {
     }
 
     private async tick() {
-        if (this.paused) return;
+        if (this.paused || this.ticking) return;
+        this.ticking = true;
+        try {
         // read phases fresh from engine & don't cache
         if (this.engine.state.phase === 'end' || this.engine.state.phase === 'lobby') return;
 
@@ -97,7 +100,7 @@ class GameOrchestrator {
         if (this.engine.state.phase === 'play') {
             const aliveAgents = Object.values(this.engine.state.agents).filter(a => a.alive);
 
-            const thoughts = await Promise.allSettled(aliveAgents.map(agent => runAgent(agent, this.engine.state)));
+            const thoughts = await Promise.allSettled(aliveAgents.map(agent => runAgent(agent, this.engine.state, this.engine.getKillCooldown(agent.id))));
 
             for (let i = 0; i < aliveAgents.length; i++) {
                 const result = thoughts[i];
@@ -129,7 +132,7 @@ class GameOrchestrator {
                     const line = `${agent.name}: ${result.speech}`;
                     speeches.push(line);
                     this.engine.recordSpeech(agent.id, result.speech);
-                    this.broadcast({ type: 'STATE_SYNC', state: this.engine.state });
+                    this.broadcast({ type: 'STATE_SYNC', state: this.engine.toClientState(true) });
                 }
             }
 
@@ -155,7 +158,7 @@ class GameOrchestrator {
         // advance game clock
         const newEvents = this.engine.tick();
         this.broadcast({ type: 'TICK', tick: this.engine.state.tick, events: newEvents });
-        this.broadcast({ type: 'STATE_SYNC', state: this.engine.state });
+        this.broadcast({ type: 'STATE_SYNC', state: this.engine.toClientState(true) });
 
         if ((this.engine.state.phase as string) === 'end') {
             this.broadcast({
@@ -164,6 +167,9 @@ class GameOrchestrator {
                 reason: this.engine.state.winReason!,
             });
             this.stopLoop();
+        }
+        } finally {
+            this.ticking = false;
         }
     }
 }
@@ -188,6 +194,13 @@ fastify.register(async (f) => {
         socket.on('close', () => orchestrator.removeClient(socket));
     });
 });
+
+fastify.get('/', async () => ({
+    ok: true,
+    service: 'agenticamongus-backend',
+    websocket: '/ws',
+    health: '/health',
+}));
 
 fastify.get('/health', async () => ({ ok: true }));
 

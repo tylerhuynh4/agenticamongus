@@ -2,57 +2,13 @@ import type {
   Agent, GameState, Action, Vote, Thought, room_id
 } from '../../../shared/types';
 import { ROOMS, shortestPath } from '../game/map.js';
+import { OpenRouterClient } from '../ai/openServer.js';
 
-// calls LLM client
-
-const LLM_BASE = process.env.LLM_URL ?? 'http://localhost:8080';
-
-interface LLMResponse {
-    choices: Array<{ message: { content: string } }>;
-}
-
-async function callLLM(systemPrompt: string, userPrompt: string, retries = 3): Promise<string> {
-    for (let attempt = 0; attempt < retries; attempt++) {
-        try {
-            const res = await fetch(`${LLM_BASE}/v1/chat/completions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'qwen2.5-3b-instruct',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
-                    ],
-                    max_tokens: 300,
-                    temperature: 0.7,
-                    // llama.cpp grammar constraint for JSON to prevent hallucination
-                    grammar: JSON_GRAMMAR,
-                }),
-                signal: AbortSignal.timeout(8000),
-            });
-        const data: LLMResponse = await res.json();
-        return data.choices[0].message.content.trim();
-        } catch (e) {
-            if (attempt === retries - 1) throw e;
-            await new Promise(r => setTimeout(r, 500));
-        }
-    }
-    throw new Error('LLM call failed after retries');
-}
-
-// Minimal JSON grammar for llama.cpp to ensure valid output
-const JSON_GRAMMAR = `
-root   ::= object
-object ::= "{" ws (string ":" ws value ("," ws string ":" ws value)*)? "}"
-value  ::= string | number | object | "true" | "false" | "null"
-string ::= "\\"" ([^"\\\\] | "\\\\" .)* "\\"" ws
-number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ws
-ws     ::= [ \\t\\n]*
-`.trim();
+const llm = new OpenRouterClient();
 
 // context builder
 
-function buildAgentContext(agent: Agent, state: GameState): string {
+function buildAgentContext(agent: Agent, state: GameState, killCooldown = 0): string {
     const room = ROOMS[agent.room];
     const roommates = Object.values(state.agents).filter(a => a.alive && a.id !== agent.id && a.room === agent.room);
     const bodies = state.bodies.filter(b => b.room === agent.room);
@@ -72,12 +28,12 @@ function buildAgentContext(agent: Agent, state: GameState): string {
 CURRENT TICK: ${state.tick}
 YOUR NAME: ${agent.name}
 YOUR ROLE: ${agent.role.toUpperCase()}
-YOUR ROOM: ${room.label}
-ADJACENT ROOMS: ${room.adjacent.map(r => ROOMS[r].label).join(', ')}
-${agent.role === 'imp' ? `VENT DESTINATION: ${room.ventTo ? ROOMS[room.ventTo].label : 'none'}` : ''}
+YOUR ROOM: ${room.label} (id: ${room.id})
+ADJACENT ROOMS: ${room.adjacent.map(r => `${ROOMS[r].label} (id: ${r})`).join(', ')}
+${agent.role === 'imp' ? `VENT DESTINATION: ${room.ventTo ? `${ROOMS[room.ventTo].label} (id: ${room.ventTo})` : 'none'}` : ''}
 
-PLAYERS IN THIS ROOM: ${roommates.length ? roommates.map(a => a.name).join(', ') : 'nobody'}
-BODIES IN THIS ROOM: ${bodies.length ? bodies.map(b => state.agents[b.victimId]?.name).join(', ') : 'none'}
+PLAYERS IN THIS ROOM: ${roommates.length ? roommates.map(a => `${a.name} (id: ${a.id})`).join(', ') : 'nobody'}
+BODIES IN THIS ROOM: ${bodies.length ? bodies.map(b => `${state.agents[b.victimId]?.name} (id: ${b.victimId})`).join(', ') : 'none'}
 
 RECENT OBSERVATIONS:
 ${recentObservations.length ? recentObservations.join('\n') : 'Nothing notable recently.'}
@@ -88,10 +44,11 @@ TASKS REMAINING OVERALL: ${tasksRemaining.length}
 TOTAL PROGRESS: ${state.completedTasks}/${state.totalTasksRequired} tasks done
 ` : `
 YOUR IMPOSTOR ALLIES: ${impostorAllies.join(', ') || 'none alive'}
+KILL COOLDOWN: ${killCooldown > 0 ? `${killCooldown} ticks remaining — do NOT kill yet` : 'READY — you may kill'}
 TOTAL CREWMATES ALIVE: ${aliveAgents.filter(a => a.role === 'crew').length}
 TOTAL PLAYERS ALIVE: ${aliveAgents.length}
 `}
-ALIVE PLAYERS: ${aliveAgents.map(a => `${a.name} (${a.room})`).join(', ')}
+ALIVE PLAYERS: ${aliveAgents.map(a => `${a.name} (id: ${a.id}, room: ${a.room})`).join(', ')}
 `.trim();
 }
 
@@ -99,13 +56,10 @@ ALIVE PLAYERS: ${aliveAgents.map(a => `${a.name} (${a.room})`).join(', ')}
 
 const CREWMATE_SYSTEM = `You are playing Among Us as a CREWMATE. Your goal is to complete all tasks and identify the impostor(s).
 
-RULES:
-- You can only move to adjacent rooms
-- Complete tasks to help the crew win
-- Report bodies immediately when you find them
-- Call emergency meetings in the Cafeteria if you have strong suspicion
-- Pay attention to who you see and where — use this to vote out impostors
-- Be strategic: share information in meetings to help the crew
+PRIORITY RULES (follow in order):
+1. If BODIES IN THIS ROOM lists any body, immediately report it using that body's id
+2. If you have a task available in this room, do it
+3. Otherwise move toward a room that has one of your remaining tasks
 
 You must respond with a JSON object and NOTHING ELSE. Think step by step in the "reasoning" field first.
 
@@ -119,12 +73,11 @@ For gameplay actions use:
 const IMPOSTOR_SYSTEM = `You are playing Among Us as an IMPOSTOR. Your goal is to kill crewmates and avoid being detected.
 
 RULES:
-- Kill crewmates when you are ALONE with them (no witnesses)
-- After killing, immediately move to another room to create an alibi
-- Pretend to do tasks (but you cannot actually complete them)
-- In meetings: deflect suspicion, create confusion, accuse innocents if credible
+- If KILL COOLDOWN is READY and there is exactly ONE crewmate in your room, kill them immediately
+- After killing, move to another room
+- If your cooldown is not ready, move around to find isolated crewmates
 - Never kill your fellow impostors
-- Kill cooldown must be expired before you can kill again
+- In meetings: deflect suspicion and accuse innocents
 
 You must respond with a JSON object and NOTHING ELSE. Think step by step in the "reasoning" field first.
 
@@ -143,14 +96,14 @@ Respond ONLY with: {"reasoning": "...", "vote": "agent_id_or_skip"}`;
 
 // agent runner (processes agent by tick)
 
-export async function runAgent(agent: Agent, state: GameState): Promise<Thought | null> {
+export async function runAgent(agent: Agent, state: GameState, killCooldown = 0): Promise<Thought | null> {
     if (!agent.alive) return null;
 
-    const context = buildAgentContext(agent, state);
+    const context = buildAgentContext(agent, state, killCooldown);
     const systemPrompt = agent.role === 'imp' ? IMPOSTOR_SYSTEM : CREWMATE_SYSTEM;
 
     try {
-        const raw = await callLLM(systemPrompt, context);
+        const raw = (await llm.complete(context, systemPrompt)).text;
         const parsed = JSON.parse(raw);
         const action = extractAction(parsed, agent, state);
 
@@ -176,7 +129,7 @@ export async function runDiscussionAgent(agent: Agent, state: GameState): Promis
     if (!agent.alive) return null;
     const context = buildAgentContext(agent, state);
     try {
-        const raw = await callLLM(DISCUSSION_SYSTEM, context);
+        const raw = (await llm.complete(context, DISCUSSION_SYSTEM)).text;
         const parsed = JSON.parse(raw);
         return { speech: parsed.speech ?? 'I have nothing to add.' };
     } catch {
@@ -188,7 +141,7 @@ export async function runVoteAgent(agent: Agent, state: GameState, discussion: s
     if (!agent.alive) return null;
     const context = `${buildAgentContext(agent, state)}\n\nDISCUSSION SO FAR:\n${discussion.join('\n')}`;
     try {
-        const raw = await callLLM(VOTING_SYSTEM, context);
+        const raw = (await llm.complete(context, VOTING_SYSTEM)).text;
         const parsed = JSON.parse(raw);
         const voteTarget = parsed.vote;
         const aliveIds = Object.values(state.agents).filter(a => a.alive).map(a => a.id);

@@ -10,7 +10,7 @@ export const DEFAULT_CONFIG: Config = {
     numImpostors: 2,
     numAgents: 8,
     tickMs: 2000,
-    killCooldownTicks: 5,
+    killCooldownTicks: 2,
     trialTicks: 15,
     votingTicks: 10,
 };
@@ -165,6 +165,7 @@ export class GameEngine {
             case 'report': return this.doReport(agent, action.victimId);
             case 'call_meeting': return this.doCallMeeting(agent);
             case 'wait': return { ok: true };
+            default: return { ok: false, reason: 'unknown action' };
         }
     }
 
@@ -250,6 +251,10 @@ export class GameEngine {
         roommates.forEach(r => {agent.lastSeen[r.id] = { room: r.room, tick: this.state.tick };});
         // all roommates see this agent
         roommates.forEach(r => {r.lastSeen[movingAgentId] = { room: agent.room, tick: this.state.tick };});
+    }
+
+    getKillCooldown(agentId: string): number {
+        return this.killCooldowns[agentId] ?? 0;
     }
 
     getAgentsInRoom(room: room_id): Agent[] {
