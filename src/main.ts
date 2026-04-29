@@ -1,5 +1,5 @@
 import { decideAction } from "./agent/decision.js";
-import { LlamaCppClient } from "./ai/llamaClient.js";
+import { OpenRouterClient } from "./ai/openServer.js";
 import type { GameState } from "./types.js";
 
 async function run(): Promise<void> {
@@ -32,7 +32,7 @@ async function run(): Promise<void> {
     ],
   };
 
-  const client = new LlamaCppClient();
+  const client = new OpenRouterClient();
   const action = await decideAction(sampleState, client);
   console.log("AI action:", action);
 }

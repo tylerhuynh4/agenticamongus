@@ -14,26 +14,14 @@ This repository now includes a starter AI/Agent implementation in TypeScript.
 
 ### Stack
 - Node.js + TypeScript
-- llama.cpp integration (via CLI process)
+- OpenRouter chat-completions integration
 - Fastify and WS dependencies aligned with project direction
 - Vitest test workflow (compatible with Vite ecosystem)
 
 ### Prerequisites
 1. Install Node.js 20+.
-2. Install llama.cpp and build/download a llama executable (recommended on Windows: `llama-completion.exe`).
-3. Download the Qwen2.5-3B-Instruct GGUF model (recommended: `Q4_K_M` quantization).
-
-### GGUF Model Download
-This is the model I'm using if you need to download it:
-
-1. Open: `https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF`
-2. Download: `Qwen2.5-3B-Instruct-Q4_K_M.gguf`
-3. Save it somewhere local, for example: `C:/Users/Awsom/Programs/CPSC 481/llama.cpp/models/qwen2.5-3b-instruct-q4_k_m.gguf`
-4. Set `LLAMA_MODEL_PATH` in your local `.env` to that file path.
-
-Notes:
-- `Q4_K_M` is a good quality/speed balance for CPU laptops.
-- Do not commit the model file to git (it is large and machine-local).
+2. Create an OpenRouter account and generate an API key.
+3. Use the OpenRouter model slug `meta-llama/llama-3.1-8b-instruct`
 
 ### Install
 ```bash
@@ -43,8 +31,9 @@ npm install
 ### Configure
 1. Copy `.env.example` to `.env`.
 2. Set:
-	- `LLAMA_CPP_BIN` to your llama executable path (recommended on Windows: `llama-completion.exe`).
-	- `LLAMA_MODEL_PATH` to your GGUF model path.
+	- `OPENROUTER_API_KEY` to your OpenRouter API key.
+	- `OPENROUTER_MODEL` to the OpenRouter model slug, which defaults to `meta-llama/llama-3.1-8b-instruct`.
+	- Optionally set `OPENROUTER_APP_URL` and `OPENROUTER_APP_NAME` for OpenRouter headers.
 
 ### Verify setup
 ```bash
@@ -66,7 +55,7 @@ npm run dev
 The smoke script loads a sample game state and asks the AI for one next action.
 
 ## Current Structure
-- `src/ai/llamaClient.ts`: llama.cpp client and a mock client for tests.
+- `src/ai/llamaClient.ts`: OpenRouter client and a mock client for tests.
 - `src/agent/decision.ts`: prompt builder + action parsing/sanitizing.
 - `src/types.ts`: shared game/action interfaces.
 - `src/main.ts`: local smoke run entrypoint.
