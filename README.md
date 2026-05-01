@@ -1,62 +1,88 @@
-﻿# agenticamongus
+# agenticamongus
+
+An autonomous Among Us simulation where every player is an AI agent powered by an LLM via the OpenRouter API. The server runs the game engine and queries the LLM for each agent's decision every tick. The frontend watches the game unfold in real time over WebSocket.
 
 ## Team
 - Tyler Huynh
 - Duy Nguyen
 - Daniel Lee
 
-## Brief (Duy)
-This is what I know so far and what I've done so far. The README can be edited/changed.
+## Project Structure
 
-## AI/Agent Setup
+```
+agenticamongus/
+├── backend/
+│   ├── server/          # Fastify + WebSocket game server
+│   │   ├── src/
+│   │   │   ├── agents/  # LLM prompt building and agent runner
+│   │   │   ├── ai/      # OpenRouter client and config
+│   │   │   ├── game/    # Game engine and map
+│   │   │   └── index.ts # Server entrypoint
+│   │   ├── .env.example
+│   │   └── package.json
+│   └── shared/
+│       └── types.ts     # Shared types between server and frontend
+└── Among_Us_Frontend/   # Vite + TypeScript frontend
+    ├── src/
+    │   ├── ui/          # Dashboard, map, player list, event log
+    │   ├── network/     # WebSocket client
+    │   ├── state/       # Game state
+    │   └── app.ts
+    └── package.json
+```
 
-This repository now includes a starter AI/Agent implementation in TypeScript.
+## Tech Stack
 
-### Stack
-- Node.js + TypeScript
-- OpenRouter chat-completions integration
-- Fastify and WS dependencies aligned with project direction
-- Vitest test workflow (compatible with Vite ecosystem)
+- **Backend**: Node.js, TypeScript, Fastify, `@fastify/websocket`, OpenRouter API
+- **Frontend**: Vite, TypeScript (no framework)
+- **Shared**: TypeScript types consumed by both sides
 
-### Prerequisites
-1. Install Node.js 20+.
-2. Create an OpenRouter account and generate an API key.
-3. Use the OpenRouter model slug `meta-llama/llama-3.1-8b-instruct`
+## Prerequisites
 
-### Install
+- Node.js 20+
+- An [OpenRouter](https://openrouter.ai) account and API key
+- A model slug from OpenRouter (the team default is `meta-llama/llama-3.1-8b-instruct`)
+
+## Setup
+
+### Backend
+
 ```bash
+cd backend/server
 npm install
+cp .env.example .env
 ```
 
-### Configure
-1. Copy `.env.example` to `.env`.
-2. Set:
-	- `OPENROUTER_API_KEY` to your OpenRouter API key.
-	- `OPENROUTER_MODEL` to the OpenRouter model slug, which defaults to `meta-llama/llama-3.1-8b-instruct`.
-	- Optionally set `OPENROUTER_APP_URL` and `OPENROUTER_APP_NAME` for OpenRouter headers.
+Edit `.env` and fill in:
 
-### Verify setup
-```bash
-npm run build
-npm test
-npm run dev
+```
+OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct
 ```
 
-### Run tests
-```bash
-npm test
-```
+Start the server:
 
-### Run AI smoke script
 ```bash
 npm run dev
 ```
 
-The smoke script loads a sample game state and asks the AI for one next action.
+The server runs on port `3001` by default. The WebSocket endpoint is `ws://localhost:3001/ws`.
 
-## Current Structure
-- `src/ai/llamaClient.ts`: OpenRouter client and a mock client for tests.
-- `src/agent/decision.ts`: prompt builder + action parsing/sanitizing.
-- `src/types.ts`: shared game/action interfaces.
-- `src/main.ts`: local smoke run entrypoint.
-- `tests/decision.test.ts`: baseline parsing and fallback tests.
+### Frontend
+
+```bash
+cd Among_Us_Frontend
+npm install
+npm run dev
+```
+
+Open the URL printed by Vite in your browser. The frontend will connect to the backend automatically.
+
+## How It Works
+
+1. The frontend sends a `START_GAME` message over WebSocket to begin.
+2. The server creates 8 agents (6 crewmates, 2 impostors) and starts the game loop.
+3. Every tick (default 2 seconds), each alive agent queries the LLM with their current context — room, adjacent rooms, nearby players, tasks, observations — and receives a JSON action in response.
+4. The game engine validates and applies each action, then broadcasts the updated state to the frontend.
+5. When a body is reported or a meeting is called, agents enter a trial phase (each speaks), then a voting phase (each votes), and the result is applied.
+6. The game ends when crewmates finish all tasks, an impostor is ejected, impostors outnumber crew, or time runs out.
